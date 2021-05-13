@@ -6,3 +6,6 @@
 
 - Fully 3D animated MMORPG Connect 4 with online multiplayer, VR support and
 5.1 surround sound audio, procedural generation
+
+
+TODO: Board Printing in wrong direction.

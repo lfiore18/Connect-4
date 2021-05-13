@@ -1,4 +1,5 @@
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <limits>
@@ -28,6 +29,20 @@ const size_t BOARD_HEIGHT = 6;
 const size_t NULL_BOARD_INDEX = std::numeric_limits<size_t>::max();
 
 enum class Cell { Empty, Red, Yellow };
+
+std::ostream& operator<<(std::ostream& os, Cell cell) {
+	std::string str;
+
+	switch (cell) {
+	case Cell::Empty: str = "Empty"; break;
+	case Cell::Red: str = "Red"; break;
+	case Cell::Yellow: str = "Yellow"; break;
+	}
+
+	os << str;
+    return os;
+}
+
 using Board = std::array<Cell, BOARD_WIDTH * BOARD_HEIGHT>;
 
 size_t GetIndex(size_t x, size_t y) {
@@ -194,6 +209,36 @@ Cell CheckForWinnerDiagonalUpLeft(const Board& board) {
 	return result;
 }
 
+Cell CheckForWinner(const Board& board) {
+
+	Cell result = Cell::Empty;
+
+	if (result = CheckForWinnerInColumn(board); result != Cell::Empty) {
+		return result;
+	}
+	else if (result = CheckForWinnerInRow(board); result != Cell::Empty) {
+		return result;
+	}
+	else if (result = CheckForWinnerDiagonalUpRight(board); result != Cell::Empty) {
+		return result;
+	}
+	else if (result = CheckForWinnerDiagonalUpLeft(board); result != Cell::Empty) {
+		return result;
+	}
+
+	return result;
+}
+
+bool IsBoardFull(const Board& board) {
+    for (const auto& cell : board) {
+        if (cell == Cell::Empty) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 std::string CellToResultString(Cell cell) {
 	switch (cell) {
 	case Cell::Red:    return "Red";
@@ -261,21 +306,101 @@ std::string PlayConnectFour(std::vector<std::string> pieces_position_list)
 
 		// Convert the winner cell type to the string that the test wants ("Draw", "Red" or "Yellow")
 
-		if (result = CheckForWinnerInColumn(board); result != Cell::Empty) {
-			return CellToResultString(result);
-		}
-		else if (result = CheckForWinnerInRow(board); result != Cell::Empty) {
-			return CellToResultString(result);
-		}
-		else if (result = CheckForWinnerDiagonalUpRight(board); result != Cell::Empty) {
-			return CellToResultString(result);
-		}
-		else if (result = CheckForWinnerDiagonalUpLeft(board); result != Cell::Empty) {
-			return CellToResultString(result);
-		}
+		// TODO: Pull out into it's own function
+
 	}
 	
 	return CellToResultString(Cell::Empty);
+}
+
+void PlacePiece(Board* board, Cell piece, char column) {
+
+	size_t column_index = static_cast<size_t>(column) - 'a';
+
+	for (size_t j = 0; j < BOARD_HEIGHT; j++) {
+		size_t index = GetIndex(column_index, j);
+		if ((*board)[index] == Cell::Empty) {
+            (*board)[index] = piece;
+			break;
+		}
+	}
+}
+
+char ReadColumnInput() {
+	char input;
+	std::cin >> input;
+	input = tolower(input);
+
+	return input;
+}
+
+void DrawHorizontalBeam() {
+	for (size_t i = 0; i < (2 * BOARD_WIDTH + 1); ++i) {
+		std::cout << "-";
+	}
+	std::cout << std::endl;
+}
+
+void DrawBoard(const Board& board) {
+	// BOARD_WIDTH, BOARD_HEIGHT
+	// GetIndex
+
+	// - walk through the board
+	// - draw the pieces
+
+	// ----------------
+	// | | | | | | | |
+	// | | | | | | | |
+	// | | |o| | | | |
+	// | | |o| | | | |
+	// | |x|o| | | | |
+	// |o|x|o| | | | | 
+	// --------------
+	//  A B C D E F G 
+	// -----------------
+
+	// Top beam
+	DrawHorizontalBeam();
+	
+
+	// TODO: Board is currently rendered upside down. Fix later.
+	// Pieces
+	for (size_t j = BOARD_HEIGHT - 1; j != NULL_BOARD_INDEX; --j) {
+		for(size_t i = 0; i < BOARD_WIDTH; ++i) {
+			size_t index = GetIndex(i, j);
+			Cell cell = board[index];
+
+			std::cout << "|";
+
+			switch(cell) {
+			case Cell::Empty:  std::cout << " ";
+				break;
+			case Cell::Red:    std::cout << "o";
+				break;
+			case Cell::Yellow: std::cout << "x";
+				break;
+			}
+		}
+		std::cout << "|" << std::endl;
+	}
+
+	// Second beam
+	DrawHorizontalBeam();
+
+	// Column names
+	for (size_t i = 0; i < BOARD_WIDTH; ++i) {
+		const char column_name = 'A' + static_cast<char>(i);
+		std::cout << " " << column_name;
+	}
+	std::cout << std::endl;
+
+	// Bottom beam
+	DrawHorizontalBeam();
+}
+
+bool ColumnHasSpace(char user_input, const Board& board) {
+	size_t index = GetIndex(static_cast<size_t>(user_input) - 'a', BOARD_HEIGHT - 1);
+	return board[index] == Cell::Empty;
 }
 
 int main() {
@@ -287,11 +412,54 @@ int main() {
 	// > Else:
 	//     - Go to step 1
 
+	bool isFinished = false;
+
+	// Storage for our board
+	Board board{};
+	board.fill(Cell::Empty);
+	Cell result;
+
+	Cell current_player = Cell::Red;
+
 	std::cout << "Welcome to Connect FOUR!!!" << std::endl;
 
-	std::cout << "Please input a column (A-H):"
-	std::string user_input;
-	std::cin << user_input;
+	while (!isFinished) {
+		std::cout << current_player << "'s turn" << std::endl;
+		// std::cout << (current_player == Cell::Red ? "Yellow's turn!" : "Red's Turn") << std::endl;
+		std::cout << "Please input a column (A-G):" << std::endl;
+
+		char user_input = ReadColumnInput();
+
+		if (!(user_input >= 'a') || !(user_input <= 'g')) {
+			std::cout << "Invalid input. You can't even play Connect 4 bitch!" << std::endl;
+		    continue;
+		}
+
+		if (!ColumnHasSpace(user_input, board)) {
+			std::cout << "Column " << (char)toupper(user_input) << " is full. Choose another column!" << std::endl;
+		    continue;
+		}
+
+		PlacePiece(&board, current_player, user_input);
+		
+		// Check for winners
+			// if no winner, SwitchPlayer(...)
+		DrawBoard(board);
+
+		result = CheckForWinner(board);
+
+		if (result != Cell::Empty) {
+			std::cout << current_player << " wins!" << std::endl;
+			break;
+		}
+
+		if (IsBoardFull(board)) {
+            std::cout << "It's a draw bitches!" << std::endl;
+			break;
+		}
+
+        current_player = current_player == Cell::Red ? Cell::Yellow : Cell::Red;
+	}
 
 	return 0;
 }
